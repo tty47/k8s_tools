@@ -1,0 +1,181 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd
+  namespace: kube-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd
+roleRef:
+  kind: ClusterRole
+  name: fluentd
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: fluentd
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+    version: v1
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-logging
+      version: v1
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-logging
+        version: v1
+        kubernetes.io/cluster-service: "true"
+    spec:
+      serviceAccount: fluentd
+      serviceAccountName: fluentd
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      containers:
+        - name: fluentd
+          image: fluent/fluentd-kubernetes-daemonset:v1.12.0-debian-graylog-1.0
+          env:
+            - name: FLUENT_GRAYLOG_HOST
+              value: "graylog-nodeport.graylog.svc"
+            - name: FLUENT_GRAYLOG_PORT
+              value: "12201"
+            - name: FLUENT_GRAYLOG_PROTOCOL
+              value: "udp"
+            - name: FLUENTD_SYSTEMD_CONF
+              value: "disable"
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: journal
+              mountPath: /var/log/journal
+              readOnly: true
+            - name: fluentd-config
+              mountPath: /fluentd/etc/
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: journal
+          hostPath:
+            path: /run/log/journal
+        - name: fluentd-config
+          configMap:
+            name: fluentd-config
+            items:
+              - key: fluent.conf
+                path: fluent.conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: kube-system
+data:
+  fluent.conf: |-
+    <match @FLUENT_LOG>
+      @type null
+    </match>
+
+    # This source is to get info about the graylog connection status
+    <source>
+      @type tail
+      path /var/log/containers/conntrack*.log
+      pos_file /var/log/fluentd-containers-conntrack.log.pos
+      time_format %Y-%m-%dT%H:%M:%S.%NZ
+      tag kubernetes.*
+      format json
+      read_from_head true
+    </source>
+
+    # The following source is in which we will get the ingress logs
+    <source>
+      @type tail
+      path /var/log/containers/ingress-nginx-controller*.log
+      pos_file /var/log/fluentd-ingress-nginx-controller-containers.log.pos
+      time_format %Y-%m-%dT%H:%M:%S.%NZ
+      tag kubernetes.*
+      format json_in_json
+      read_from_head true
+    </source>
+
+    # Provide log format with the filter
+    <filter kubernetes.var.log.containers.ingress-nginx-controller**.log>
+      @type parser
+      key_name log
+      format /^(?<remote>[^ ]*) (?<host>[^\]]*) (?<user>[^ ]+) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*) +\S*)?" (?<status>\d+) (?<bytes_sent>\d+) "(?<referrer>[^ ]*)" "(?<user_agent>[^\"]*)" (?<request_length>\d+) (?<request_time>[\d.]+) \[(?<proxy_upstream_name>[^\]]*)\] \[(?<proxy_alternative_upstream_name>[^ ]*)\] (?<upstream_addr>[^ ]*) (?<upstream_response_length>\d+) (?<upstream_response_time>[\d.]+) (?<upstream_status>\d+) (?<request_id>[^ ]*)/
+      time_format %d/%b/%Y:%H:%M:%S %z
+      types status:integer,size:integer,request_length:integer,request_time:float,upstream_response_length:integer,upstream_response_time:float,upstream_status:integer
+      reserve_data yes
+      inject_key_prefix nginx.
+    </filter>
+
+    <match kubernetes.var.log.containers.**fluentd**.log>
+      @type null
+    </match>
+
+    <match **>
+      @type copy
+      <store>
+        @type gelf
+        @id out_graylog
+        @log_level info
+        include_tag_key true
+        host "#{ENV['FLUENT_GRAYLOG_HOST']}"
+        port "#{ENV['FLUENT_GRAYLOG_PORT']}"
+        protocol "#{ENV['FLUENT_GRAYLOG_PROTOCOL']}"
+        buffer_chunk_limit 4096K
+        buffer_queue_limit 512
+        flush_interval 5s
+        max_retry_wait 30
+        disable_retry_limit
+        num_threads 8
+      </store>
+      # This store is to validate in the stdout, remove it if not needed
+      <store>
+        @type stdout
+      </store>
+    </match>

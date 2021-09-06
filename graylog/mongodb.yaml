@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: graylog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: mongo
+  template:
+    metadata:
+      labels:
+        service: mongo
+    spec:
+      containers:
+        - image: mongo:3
+          name: mongo
+          resources:
+            limits:
+              cpu: 800m
+              memory: 750Mi
+            requests:
+              cpu: 350m
+              memory: 450Mi
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: graylog
+  labels:
+    service: mongo
+spec:
+  clusterIP: None
+  ports:
+    - name: headless
+      port: 55555
+      targetPort: 0
+  selector:
+    service: mongo
