@@ -2,10 +2,15 @@
 
 Useful tools for K8S.
 
+---
 DB:
 
-- Redis
-- PostgreSQL
+- [Redis](https://github.com/jrmanes/k8s_tools/tree/master/redis)
+- [PostgreSQL](https://github.com/jrmanes/k8s_tools/tree/master/postgresql)
+
+---
 
 Log Management:
-- Graylog
+- [Graylog](https://github.com/jrmanes/k8s_tools/tree/master/graylog)
+
+---
