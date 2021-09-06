@@ -6,3 +6,6 @@ DB:
 
 - Redis
 - PostgreSQL
+
+Log Management:
+- Graylog
