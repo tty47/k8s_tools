@@ -1,0 +1,115 @@
+---
+#Daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail-daemonset
+  namespace: loki
+spec:
+  selector:
+    matchLabels:
+      name: promtail
+  template:
+    metadata:
+      labels:
+        name: promtail
+    spec:
+      serviceAccount: promtail-serviceaccount 
+      serviceAccountName: promtail-serviceaccount 
+      volumes:
+      - name: logs
+        hostPath:
+          path: HOST_PATH
+      - name: promtail-config
+        configMap:
+          name: promtail-configmap
+      containers:
+      - name: promtail-container
+        image: grafana/promtail
+        args:
+        - -config.file=/etc/promtail/promtail.yaml
+        env: 
+        - name: 'HOSTNAME' # needed when using kubernetes_sd_configs
+          valueFrom:
+            fieldRef:
+              fieldPath: 'spec.nodeName'
+        volumeMounts:
+        - name: logs
+          mountPath: MOUNT_PATH
+        - name: promtail-config
+          mountPath: /etc/promtail
+
+---
+#configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: loki
+data:
+  promtail.yaml: #YOUR CONFIG
+    # Configures the server for Promtail.
+    [server: <server_config>]
+    
+    # Describes how Promtail connects to multiple instances
+    # of Grafana Loki, sending logs to each.
+    # WARNING: If one of the remote Loki servers fails to respond or responds
+    # with any error which is retryable, this will impact sending logs to any
+    # other configured remote Loki servers.  Sending is done on a single thread!
+    # It is generally recommended to run multiple Promtail clients in parallel
+    # if you want to send to multiple remote Loki instances.
+    clients:
+      - [<client_config>]
+    
+    # Describes how to save read file offsets to disk
+    [positions: <position_config>]
+    
+    scrape_configs:
+      - [<scrape_config>]
+    
+    # Configures global limits for this instance of Promtail
+    [limits_config: <limits_config>]
+    
+    # Configures how tailed targets will be watched.
+    [target_config: <target_config>]
+
+---
+#Clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail-clusterrole
+  namespace: loki
+rules:
+  - apiGroups: [""]
+    resources:
+    - nodes
+    - services
+    - pods
+    verbs:
+    - get
+    - watch
+    - list
+
+---
+#ServiceAccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail-serviceaccount
+  namespace: loki
+---
+#Rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail-clusterrolebinding
+  namespace: loki
+subjects:
+    - kind: ServiceAccount
+      name: promtail-serviceaccount
+      namespace: default
+roleRef:
+    kind: ClusterRole
+    name: promtail-clusterrole
+    apiGroup: rbac.authorization.k8s.io
