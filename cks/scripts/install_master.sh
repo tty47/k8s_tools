@@ -125,7 +125,9 @@ echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- -
 systemctl daemon-reload
 systemctl enable containerd
 systemctl restart containerd
-systemctl enable kubelet && systemctl start kubelet
+systemctl enable kubelet
+#systemctl enable kubelet && systemctl start kubelet
+systemctl daemon-reload
 echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
 
 # In case the starts fail
@@ -148,7 +150,9 @@ echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- -
 
 ### CNI
 #kubectl apply -f https://raw.githubusercontent.com/killer-sh/cks-course-environment/master/cluster-setup/calico.yaml
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/tigera-operator.yaml
+#kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.0/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.0/manifests/custom-resources.yaml
 echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
 
 # etcdctl
