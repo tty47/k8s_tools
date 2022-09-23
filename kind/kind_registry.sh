@@ -43,10 +43,11 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
   image: tempkind:latest
-#- role: control-plane
-#- role: control-plane
-#- role: worker
-#- role: worker
+- role: control-plane
+- role: control-plane
+- role: control-plane
+- role: worker
+- role: worker
 - role: worker
   image: tempkind:latest
 containerdConfigPatches:
