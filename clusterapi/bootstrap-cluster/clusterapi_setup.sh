@@ -2,7 +2,7 @@
 # Source: https://kind.sigs.k8s.io/docs/user/local-registry/
 clear
 
-KUBERNETES_VERSION="v1.25.0"
+KUBERNETES_VERSION="v1.25.3"
 
 set -o errexit
 
@@ -37,7 +37,35 @@ clusterctl generate cluster ${clusterName} --flavor development \
   --kubernetes-version ${KUBERNETES_VERSION} \
   --control-plane-machine-count=3 \
   --worker-machine-count=3 \
+  --infrastructure docker \
   > capi-${clusterName}.yaml
 
-echo "Check the file: [./capi-${clusterName}.yaml]"
+sed -i -e "s/quick-start/${clusterName}/g" capi-${clusterName}.yaml
+rm capi-${clusterName}.yaml-e
+
 echo "========================================= >"
+echo "Check the file: [./capi-${clusterName}.yaml]"
+
+echo "========================================= >"
+echo "Applying the manifest..."
+kubectl apply -f ./capi-${clusterName}.yaml
+
+echo "Check the clusters..."
+kubectl get cluster
+sleep 10
+
+#https://cluster-api.sigs.k8s.io/clusterctl/developers.html#additional-notes-for-the-docker-provider
+echo "========================================= >"
+echo "Describe the cluster [${clusterName}]"
+clusterctl describe cluster ${clusterName}
+
+echo "========================================= >"
+echo "Get the controlPlane [${clusterName}]"
+kubectl get kubeadmcontrolplane
+
+
+echo "========================================= >"
+echo "Get the kubeconfig [${clusterName}]"
+#kind get kubeconfig --name ${clusterName} > ./capi-${clusterName}.kubeconfig
+clusterctl get kubeconfig  ${clusterName} > ./capi-${clusterName}.kubeconfig
+sed -i -e "s/server:.*/server: https:\/\/$(docker port ${clusterName}-lb 6443/tcp | sed "s/0.0.0.0/127.0.0.1/")/g" ./capi-${clusterName}.kubeconfig

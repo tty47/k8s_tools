@@ -31,6 +31,9 @@ nodes:
 #- role: worker
 - role: worker
   image: tempkind:latest
+  extraMounts:
+    - hostPath: /var/run/docker.sock
+      containerPath: /var/run/docker.sock
 EOF
 
 # connect the registry to the cluster network
