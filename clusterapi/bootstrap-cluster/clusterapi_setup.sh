@@ -128,7 +128,7 @@ if [[ -z "${installCilium}" ]]; then
   exit 1
 fi
 if [[ "${installCilium}" == "y" ]];then
-  echo "Yes, install it"
+  echo "Yes please, install it"
   helm repo add cilium https://helm.cilium.io/
   helm install cilium cilium/cilium \
     --version ${CILIUM_VERSION} \
