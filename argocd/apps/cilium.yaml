@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+spec:
+  destination:
+    namespace: cilium
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: cilium
+    repoURL: https://github.com/cilium/cilium
+    targetRevision: 1.13.0
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
