@@ -116,17 +116,25 @@ rm -f capi-${clusterName}.kubeconfig-e
 
 line
 echo -e "Check the nodes using the new kubeconfig ${blueColour}[./capi-${clusterName}.kubeconfig]${endColour}"
-kubectl get no --kubeconfig=./capi-${clusterName}.kubeconfig
-export KUBECONFIG=./capi-${clusterName}.kubeconfig
+line
+echo -e "Export the Kubeconfig with the command:\n${blueColour}export KUBECONFIG=$(pwd)/capi-${clusterName}.kubeconfig${endColour}"
+sleep 10
+export KUBECONFIG=$(pwd)/capi-${clusterName}.kubeconfig
+#export KUBECONFIG=./capi-${clusterName}.kubeconfig
+kubectl get nodes --kubeconfig=./capi-${clusterName}.kubeconfig
 
 # ============================================================================
 line
 echo "Do you want to install Cilium as CNI?, y/n"
-read installCilium 
+read installCilium
 if [[ -z "${installCilium}" ]]; then
   echo "ERROR: You must set the value to install CNI..."
   exit 1
 fi
+line
+
+export KUBECONFIG=$(pwd)/capi-${clusterName}.kubeconfig
+
 if [[ "${installCilium}" == "y" ]];then
   echo "Yes please, install it"
   helm repo add cilium https://helm.cilium.io/
@@ -139,6 +147,6 @@ fi
 
 line
 echo "Checking nodes & pods.."
-kubectl get no
+kubectl get nodes
 kubectl get po -A
 line
