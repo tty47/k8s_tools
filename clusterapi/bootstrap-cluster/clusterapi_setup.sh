@@ -6,7 +6,9 @@ endColour="\033[0m\e[0m"
 blueColour="\e[0;34m\033[1m"
 grayColour="\e[0;37m\033[1m"
 
-KUBERNETES_VERSION="v1.25.3"
+# This version should math with the container build in:
+# https://github.com/jrmanes/k8s_tools/blob/master/clusterapi/bootstrap-cluster/kind_cluster.sh#L12
+KUBERNETES_VERSION="v1.26.0"
 KCP_NODES="3"
 KWM_NODES="3"
 CILIUM_VERSION="1.12.4"
