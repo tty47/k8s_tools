@@ -9,14 +9,16 @@ function fix_specified_platform() {
     export DOCKER_DEFAULT_PLATFORM=linux/arm64/v8
     docker build -t tempkind:latest -<<EOF
 #FROM --platform=linux/amd64 kindest/node:v1.25.0
-FROM --platform=linux/arm64/v8 kindest/node:v1.25.0
+FROM --platform=linux/arm64/v8 kindest/node:v$i
 RUN arch
 EOF
 }
 
 # --------------------------------------------------
 # Invoke fix specified platform in otder to create the cluster as linux platform
-fix_specified_platform
+for i in 1.25.0  1.26.0; do
+  fix_specified_platform
+done
 
 # --------------------------------------------------
 # create a cluster with the local registry enabled in containerd
