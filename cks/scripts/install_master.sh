@@ -38,9 +38,11 @@ systemctl daemon-reload
 
 
 ### install podman
+DISTRO_NAME=$(cat /etc/os-release|grep NAME|tail -n+2|head -n1|cut -d'"' -f2|cut -d' ' -f1)
+DISTRO_VERSION=$(cat /etc/os-release|grep VERSION|head -n1|cut -d'"' -f2)
 . /etc/os-release
-echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
-curl -L "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key" | sudo apt-key add -
+echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${DISTRO_NAME}_${DISTRO_VERSION}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
+curl -L "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${DISTRO_NAME}_${DISTRO_VERSION}/Release.key" | sudo apt-key add -
 apt-get update -qq
 apt-get -qq -y install podman cri-tools containers-common
 rm /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list

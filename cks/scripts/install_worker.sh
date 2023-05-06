@@ -4,65 +4,76 @@
 
 set -e
 
-export KUBE_VERSION=1.24.4
-INSTALL_KUBE_VERSION=1.24.4-00
-
+KUBE_VERSION=1.26.1
+ARCH=$(dpkg --print-architecture)
 
 ### setup terminal
-sudo apt-get update
-sudo apt-get install -y bash-completion binutils
-sudo apt-get install -y apt-transport-https ca-certificates curl gnupg gnupg2 gnupg1
+apt-get update
+apt-get install -y bash-completion binutils
+echo 'colorscheme ron' >> ~/.vimrc
+echo 'set tabstop=2' >> ~/.vimrc
+echo 'set shiftwidth=2' >> ~/.vimrc
+echo 'set expandtab' >> ~/.vimrc
+echo 'source <(kubectl completion bash)' >> ~/.bashrc
+echo 'alias k=kubectl' >> ~/.bashrc
+echo 'alias c=clear' >> ~/.bashrc
+echo 'alias l="ls -ltra"' >> ~/.bashrc
+echo 'alias ll="ls -ltra"' >> ~/.bashrc
+echo 'complete -F __start_kubectl k' >> ~/.bashrc
+sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
 
 
 ### disable linux swap and remove any existing swap partitions
 swapoff -a
 sed -i '/\sswap\s/ s/^\(.*\)$/#\1/g' /etc/fstab
 
+
 ### remove packages
+apt update
 kubeadm reset -f || true
 crictl rm --force $(crictl ps -a -q) || true
 apt-mark unhold kubelet kubeadm kubectl kubernetes-cni || true
 apt-get remove -y docker.io containerd kubelet kubeadm kubectl kubernetes-cni || true
 apt-get autoremove -y
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg gnupg2 gnupg1
 systemctl daemon-reload
 
-echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
-echo "Installing containerD..."
-echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
-curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
-echo "deb [arch=amd64] https://download.docker.com/linux/debian buster stable" |sudo tee /etc/apt/sources.list.d/docker.list
-sudo apt update
-sudo apt install -y containerd
-echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
 
-sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+### install podman
+. /etc/os-release
+# https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/
+DISTRO_NAME=$(cat /etc/os-release|grep NAME|tail -n+2|head -n1|cut -d'"' -f2|cut -d' ' -f1)
+DISTRO_VERSION=$(cat /etc/os-release|grep VERSION|head -n1|cut -d'"' -f2)
+
+echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${DISTRO_NAME}_${DISTRO_VERSION}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
+curl -L "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/${DISTRO_NAME}_${DISTRO_VERSION}/Release.key" | sudo apt-key add -
+apt-get update -qq
+apt-get -qq -y install podman cri-tools containers-common
+rm /etc/apt/sources.list.d/devel:kubic:libcontainers:testing.list
+cat <<EOF | sudo tee /etc/containers/registries.conf
+[registries.search]
+registries = ['docker.io']
+EOF
+
 ### install packages
-#curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-#cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-#deb http://apt.kubernetes.io/ kubernetes-xenial main
-#EOF
-sudo apt-get update
-sudo apt-get install -y docker.io kubelet=$INSTALL_KUBE_VERSION kubeadm=$INSTALL_KUBE_VERSION kubectl --allow-change-held-packages
-echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
-sudo apt-mark hold kubelet kubeadm kubectl
-echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+mkdir -p /etc/apt/keyrings
+curl -fsSLo /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update
+apt-get install -y docker.io containerd kubelet=${KUBE_VERSION}-00 kubeadm=${KUBE_VERSION}-00 kubectl=${KUBE_VERSION}-00 kubernetes-cni
+apt-mark hold kubelet kubeadm kubectl kubernetes-cni
 
 
-#echo "- - - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - -- - - - - - - - - - - - - - -"
-#echo "Cleaning files..."
-#if [[ -f "/etc/kubernetes/manifests/kube-controller-manager.yaml" ]];then
-#  rm /etc/kubernetes/manifests/kube-controller-manager.yaml
-#fi
-#if [[ -f "/etc/kubernetes/manifests/kube-scheduler.yaml" ]];then
-#  rm /etc/kubernetes/manifests/kube-scheduler.yaml
-#fi
-#if [[ -f "/etc/kubernetes/manifests/kube-apiserver.yaml" ]];then
-#  rm /etc/kubernetes/manifests/kube-apiserver.yaml
-#fi
-#if [[ -f "/etc/kubernetes/manifests/etcd.yaml" ]];then
-#  rm /etc/kubernetes/manifests/etcd.yaml
-#fi
+### install containerd 1.6 over apt-installed-version
+wget https://github.com/containerd/containerd/releases/download/v1.6.12/containerd-1.6.12-linux-${ARCH}.tar.gz
+tar xvf containerd-1.6.12-linux-${ARCH}.tar.gz
+systemctl stop containerd
+mv bin/* /usr/bin
+rm -rf bin containerd-1.6.12-linux-${ARCH}.tar.gz
+systemctl unmask containerd
+systemctl start containerd
+
 
 ### containerd
 cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
@@ -153,4 +164,3 @@ echo
 echo "EXECUTE ON MASTER: kubeadm token create --print-join-command --ttl 0"
 echo "THEN RUN THE OUTPUT AS COMMAND HERE TO ADD AS WORKER"
 echo
-
