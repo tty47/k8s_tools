@@ -3,8 +3,6 @@
 # Source: http://kubernetes.io/docs/getting-started-guides/kubeadm
 set -e
 
-#export KUBE_VERSION=1.24.4
-#INSTALL_KUBE_VERSION=1.24.4-00
 KUBE_VERSION=1.26.1
 ARCH=$(dpkg --print-architecture)
 
