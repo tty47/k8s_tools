@@ -35,6 +35,10 @@ apt-get autoremove -y
 sudo apt-get install -y apt-transport-https ca-certificates curl gnupg gnupg2 gnupg1
 systemctl daemon-reload
 
+# Install helm
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
 
 ### install podman
 DISTRO_NAME=$(cat /etc/os-release|grep NAME|tail -n+2|head -n1|cut -d'"' -f2|cut -d' ' -f1)
