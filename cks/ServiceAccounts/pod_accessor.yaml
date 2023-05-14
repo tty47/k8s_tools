@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: accessor
+  name: accessor
+spec:
+  serviceAccountName: accessor
+  automountServcieAccountToken: false
+  containers:
+  - image: nginx
+    name: accessor
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
